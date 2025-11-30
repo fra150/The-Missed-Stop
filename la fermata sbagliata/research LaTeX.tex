@@ -1,0 +1,80 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{geometry}
+\usepackage{hyperref}
+\geometry{margin=1in}
+
+\title{Plan Disruption and The Missed Stop:\newline Architecture, Methods, Preliminary Results, and Outlook}
+\author{Independent Researcher: Dr. Francesco Bulla}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section*{Abstract}
+This work formalizes the idea of ``The Missed Stop'' as a cognitive module that, in the presence of significant deviations between plan and reality, refrains from halting execution and instead opens a reflection phase, reprocesses the past, and proposes recovery strategies. We present a modular Python architecture (planner, sentinel, memory, recovery, orchestrator), a minimal definition of thinking time \(T_{\text{think}}\), and a reward function that values perseverance. We report preliminary results on unit tests and a demonstration scenario, and outline future research directions.
+
+\section{Introduction}
+In many decision-making applications, predefined plans fail due to external or internal causes. The traditional response to failure is either stopping or blind repetition. We propose an alternative paradigm: explicitly modeling cognitive perseverance, understood as the activation of a recovery network capable of reconsidering \emph{input}, \emph{context}, and the \emph{initial plan}, generating alternatives, and writing operational lessons into episodic memory. This paradigm is inspired by the phenomenological narrative of the ``missed stop'' as an adaptation catalyst.
+
+\section{Model Architecture}
+The architecture comprises five primary modules, implemented in \texttt{src/stravolgimento/}.
+\begin{itemize}
+  \item Planner: produces a plan \(P\) given state \(s\) and goal \(g\), and executes an action \(a\) coherent with \(P\).
+  \item Sentinel (monitor): evaluates the discrepancy between execution and goal and flags substantial errors.
+  \item The Missed Stop (LaFermataPersa): recovery module that activates upon failure, uses thinking time \(T_{\text{think}}\) and episodic memory to propose a strategy.
+  \item Episodic memory: stores quadruples \((s, P, e, r)\), where \(e\) is the detected error and \(r\) the proposed recovery strategy.
+  \item Orchestrator: coordinates planning, evaluation, recovery, and application of the new strategy.
+\end{itemize}
+
+\section{Methods}
+Let \(s_t\) denote the state at time \(t\), \(P_t\) the current plan, \(a_t\) the executed action, \(e_t\) the detected error, and \(r_t\) the proposed recovery strategy.
+
+\subsection{Thinking time}
+Thinking time \(T_{\text{think}} \in \mathbb{N}\) controls the number of internal reflection steps. Operationally, \(T_{\text{think}}\) regulates the search breadth in the strategy space \(\mathcal{R}\), i.e., the number of alternatives considered and evaluated before selecting \(r_t\).
+
+\subsection{Episodic similarity}
+Let \(\phi: \mathcal{S} \to \mathbb{R}^d\) be a state encoder and \(\operatorname{sim}(x,y)\) a similarity function (e.g., cosine). Given past episodes \(E = \{(s_i, P_i, e_i, r_i)\}\), we define case retrieval as
+\[
+\text{Retrieve}(s_t, k) = \operatorname*{arg\,max}_{\text{top-}k} \operatorname{sim}\big(\phi(s_t), \phi(s_i)\big).
+\]
+In the present implementation, we adopt a stub that returns the last \(k\) episodes, to be replaced with a neural pipeline in future work.
+
+\subsection{Perseverance reward}
+We define a composite reward function
+\[
+R = \alpha \cdot R_{\text{pers}} + \beta \cdot R_{\text{succ}}, \quad \alpha,\beta \ge 0,
+\]
+where \(R_{\text{pers}}\) values the transformation of error into strategy and operational knowledge, and \(R_{\text{succ}}\) measures goal attainment. In the minimal version, \(R_{\text{pers}}\) is proportional to the number of consolidated episodes, to be replaced with more refined metrics (recovery outcomes, temporal efficiency, robustness).
+
+\section{Preliminary Results}
+We conducted a minimal functional evaluation via unit tests and a demonstration scenario.
+\begin{itemize}
+  \item Unit tests: two tests on episodic memory and the orchestrator, both passing, with final state ``recovered'' and persistence of one episode.
+  \item Demonstration: with \(T_{\text{think}}=2\), the model produces a recovery strategy \emph{try\_alternative\_path}, with informational outcome ``recovered'' and recorded reflection metadata.
+\end{itemize}
+These results confirm correct integration among sentinel, recovery, and memory, and the traceability of episodic data.
+
+\section{Discussion}
+The proposed architecture cleanly separates responsibilities and makes key components replaceable. Formalizing \(T_{\text{think}}\) as a cognitive exploration parameter provides explicit control over the trade-off between reflection time and strategy quality. Episodic memory, appropriately enhanced with encoding and similarity, allows capitalization on the past, reducing blind error repetition and promoting adaptation.
+
+\section{Future Work}
+We outline the main planned extensions.
+\begin{itemize}
+  \item Neural encoders for state and context, with latent-space similarity-based retrieval.
+  \item Reward shaping that weights recovery outcomes, temporal cost, and robustness to perturbations.
+  \item Integration of language models to generate strategies \(r_t\) conditioned on \(E\) and goals.
+  \item Ablation studies of components (sentinel, memory, recovery) and benchmarks on synthetic and realistic scenarios.
+  \item Online learning of episodic memory, with consolidation/forgetting criteria.
+  \item Definition of reproducible experimental protocols and public datasets.
+\end{itemize}
+
+\section{Conclusion}
+Formalizing ``The Missed Stop'' as a cognitive perseverance module provides an operational basis for systems that incorporate chaos into the plan, transforming failures into knowledge. The modular implementation and preliminary results indicate the feasibility of the paradigm and sketch a technical roadmap for neural extensions, advanced reward metrics, and systematic evaluations.
+
+\section*{Signature}
+Independent Researcher: Dr. Francesco Bulla
+
+\end{document}
+

@@ -1,0 +1,80 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{geometry}
+\usepackage{hyperref}
+\geometry{margin=1in}
+
+\title{Stravolgimento dei Piani e La Fermata Persa:\newline Architettura, Metodi, Risultati Preliminari e Prospettive}
+\author{Ricercatore indipendente: Dott. Francesco Bulla}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section*{Abstract}
+Questo lavoro formalizza l'idea di ``La Fermata Persa'' come modulo cognitivo che, in presenza di deviazioni significative tra piano e realtà, non interrompe l'esecuzione ma apre una fase di riflessione, rielabora il passato e propone strategie di recupero. Presentiamo un'architettura modulare in Python (planner, sentinella, memoria, recupero, orchestratore), una definizione minimale del tempo di pensiero \(T_{\text{think}}\), e una funzione di reward che valorizza la perseveranza. Riportiamo risultati preliminari su test unitari e su un esempio d'uso, e delineiamo direzioni di ricerca future.
+
+\section{Introduzione}
+In molte applicazioni decisionali, piani predefiniti falliscono per cause esterne o interne. La risposta tradizionale al fallimento è l'arresto o la ripetizione non informata. Proponiamo un paradigma alternativo: modellare esplicitamente la perseveranza cognitiva, intesa come attivazione di una rete di recupero in grado di riconsiderare \emph{input}, \emph{contesto} e \emph{piano iniziale}, generare alternative e scrivere lezioni operative in una memoria episodica. Tale paradigma è ispirato alla narrazione fenomenologica della ``fermata sbagliata'' come catalizzatore di adattamento.
+
+\section{Architettura del Modello}
+L'architettura è composta da cinque moduli principali, implementati in \texttt{src/stravolgimento/}.
+\begin{itemize}
+  \item Planner: produce un piano \(P\) dato lo stato \(s\) e l'obiettivo \(g\), ed esegue un'azione \(a\) coerente con \(P\).
+  \item Sentinella (monitor): valuta la discrepanza tra esecuzione e obiettivo e segnala errori sostanziali.
+  \item LaFermataPersa: modulo di recupero che si attiva al fallimento, usa il tempo di pensiero \(T_{\text{think}}\) e la memoria episodica per proporre una strategia.
+  \item Memoria episodica: conserva quadruple \((s, P, e, r)\), dove \(e\) è l'errore rilevato e \(r\) una strategia di recupero proposta.
+  \item Orchestratore: coordina pianificazione, valutazione, recupero e applicazione della nuova strategia.
+\end{itemize}
+
+\section{Metodi}
+Denotiamo con \(s_t\) lo stato al tempo \(t\), con \(P_t\) il piano corrente, con \(a_t\) l'azione eseguita, con \(e_t\) l'errore rilevato, e con \(r_t\) la strategia di recupero proposta.
+
+\subsection{Tempo di pensiero}
+Il tempo di pensiero \(T_{\text{think}} \in \mathbb{N}\) controlla il numero di passi interni di riflessione. Operativamente, \(T_{\text{think}}\) regola l'ampiezza di ricerca nello spazio delle strategie \(\mathcal{R}\), ovvero il numero di alternative considerate e valutate prima di selezionare \(r_t\).
+
+\subsection{Similarità episodica}
+Sia \(\phi: \mathcal{S} \to \mathbb{R}^d\) un encoder di stato e sia \(\operatorname{sim}(x,y)\) una funzione di similarità (es. coseno). Dati episodi passati \(E = \{(s_i, P_i, e_i, r_i)\}\), definiamo un recupero dei casi rilevanti come
+\[
+\text{Retrieve}(s_t, k) = \operatorname*{arg\,max}_{\text{top-}k} \operatorname{sim}\big(\phi(s_t), \phi(s_i)\big).
+\]
+Nella presente implementazione, adottiamo uno stub che restituisce gli ultimi \(k\) episodi, da sostituire con una pipeline neurale in futuro.
+
+\subsection{Reward di perseveranza}
+Definiamo una funzione di reward composita
+\[
+R = \alpha \cdot R_{\text{pers}} + \beta \cdot R_{\text{succ}}, \quad \alpha,\beta \ge 0,
+\]
+dove \(R_{\text{pers}}\) valorizza la trasformazione dell'errore in strategia e conoscenza operativa, e \(R_{\text{succ}}\) misura il raggiungimento dell'obiettivo. Nella versione minima, \(R_{\text{pers}}\) è proporzionale al numero di episodi consolidati, da sostituire con metriche più raffinate (esiti di recupero, efficienza temporale, robustezza).
+
+\section{Risultati preliminari}
+Abbiamo condotto una valutazione funzionale minima su test unitari e su uno scenario dimostrativo.
+\begin{itemize}
+  \item Test unitari: due prove su memoria episodica e orchestratore, entrambe superate, con stato finale ``recovered'' e persistenza di un episodio.
+  \item Scenario dimostrativo: per \(T_{\text{think}}=2\), il modello produce una strategia di recupero \emph{try\_alternative\_path}, con esito informativo ``recovered'' e metadati di riflessione registrati.
+\end{itemize}
+Questi risultati confermano la correttezza dell'integrazione tra sentinella, recupero e memoria, e la tracciabilità dell'episodica.
+
+\section{Discussione}
+L'architettura proposta separa chiaramente le responsabilità e rende sostituibili i componenti chiave. La formalizzazione di \(T_{\text{think}}\) come parametro di esplorazione cognitiva offre un controllo esplicito del compromesso tra tempo di riflessione e qualità della strategia. La memoria episodica, opportunamente potenziata con encoding e similarità, permette di capitalizzare il passato, riducendo la ripetizione cieca degli errori e promuovendo adattamento.
+
+\section{Prospettive future}
+Indichiamo le principali estensioni previste.
+\begin{itemize}
+  \item Encoder neurali per stato e contesto, con retrieval basato su similarità in spazio latente.
+  \item Reward shaping che pesi esito del recupero, costo temporale e robustezza a perturbazioni.
+  \item Integrazione di modelli linguistici per generare strategie \(r_t\) condizionate su \(E\) e sugli obiettivi.
+  \item Valutazioni ablatorie dei componenti (sentinella, memoria, recupero) e benchmark su scenari sintetici e realistici.
+  \item Apprendimento online della memoria episodica, con criteri di consolidamento e dimenticanza.
+  \item Definizione di protocolli sperimentali riproducibili e dataset pubblici.
+\end{itemize}
+
+\section{Conclusioni}
+La formalizzazione di ``La Fermata Persa'' come modulo di perseveranza cognitiva fornisce una base operativa per sistemi che incorporano il caos nel piano, trasformando fallimenti in conoscenza. L'implementazione modulare e i primi risultati indicano la fattibilità del paradigma e tracciano una roadmap tecnica per estensioni neurali, metriche di reward avanzate e valutazioni sistematiche.
+
+\section*{Firma}
+Ricercatore indipendente: Dott. Francesco Bulla
+
+\end{document}
+
